@@ -22,16 +22,13 @@ public class USIP {
 	public static final int USE_NUM_OF_CALC_DIST = 3;
 	// 使う事例数 (事例が多すぎるときに指定すると計算コストが削減できる)
 	public static final int MAX_USE_INSTANCE_NUM = 10000;
+   
+
+    // 未ラベルデータファイル名
+	private String unlabelDataFile;
+    // 少数派クラスデータファイル名
+	private String minorityDataFile;
 	
-	public static final String CONCEPT_FILE = "All_concept_list2.csv";
-	public static final String ANNOTATION_M_FILE = "ann_M.csv";
-	public static final String ANNOTATION_S_FILE = "ann_S.csv";
-	public static final String INPUT_PATH_OF_POSITIVE = "annGetOutExP/";
-	public static final String INPUT_PATH_OF_NEGATIVE = "annGetOutExN/";
-	public static final String OUTPUT_PATH = "OUTPUT/";
-	
-	
-	private int conceptNo = -1;
 	// 未ラベルデータ保持用配列
 	private ArrayList<Data> datas = null;
 	// 正例保持用配列
@@ -43,9 +40,10 @@ public class USIP {
 	 * コンストラクタ
 	 * 各配列の初期化を行います。
 	 */
-	public USIP(int conceptNo){
-		this.conceptNo = conceptNo;
-		datas = new ArrayList<Data>();
+	public USIP(String dataFile, String posFile){
+	    unlabelDataFile = dataFile;
+        minorityDataFile = posFile;
+        datas = new ArrayList<Data>();
 		positives = new ArrayList<Double>();
 		sampled = new ArrayList<Data>();
 	}
@@ -66,162 +64,59 @@ public class USIP {
 	 * この関数では以下のデータが読み込まれます。
 	 * 1. 未ラベル事例データファイル
 	 * 2. 正例データファイル
-	 * また、未ラベルデータについては入力ファイル内の行番号がIDとして付与されます。
 	 */
 	private void readData(){
-		if( this.conceptNo < 0 ){
-			System.err.println("[ERROR] Concept Number is not set to variable in class");
+		if( unlabelDataFile == null || minorityDataFile == null ){
+			System.err.println("[ERROR] Input files are not set to variables in class.");
 			System.exit(-1);
 		}
-		
-		ArrayList<String> concepts = new ArrayList<String>();
-		BufferedReader br = null;
-		
-		// read concepts
-		System.out.print("[INFO] Reading concepts ...");
-		try {
-			br = new BufferedReader(new FileReader(CONCEPT_FILE));
-			String line = null;
-			while( (line = br.readLine()) != null ){
-				String[] sp = line.split(",");
-				concepts.add(sp[1]);
-			}
-	        br.close();
-		} catch (Exception e){
-			System.err.println("[ERROR] Cannot read file => "+CONCEPT_FILE );
-			System.exit(-1);
-		}
-		
-		// read shot IDs
-        System.out.print("\r[INFO] Reading shot IDs ...");
-        try {
-            br = new BufferedReader(new FileReader(ANNOTATION_S_FILE));
+
+        // read unlabeled data
+        System.out.println("[INFO] Reading unlabeled data.");
+        BufferedReader br;
+        try{
+            br = new BufferedReader(new FileReader(unlabelDataFile));
             String line = null;
-            while( (line = br.readLine()) != null ){
-                    String[] sp = line.split(",");
-                    int s = 0;
-                    for(int i=0;i<sp.length;i++){
-                            if( i+1 == sp.length || sp[i+1].equals("B") ){
-                                    String shot = "";
-                                    for(int j=s;j<=i;j++)
-                                            shot += sp[j];
-                                    datas.add(new Data(shot));
-                                    s = i+1;
-                            }
-                    }
+            int count = 0;
+            while( (line=br.readLine()) != null ){
+               ++count;
+               String[] spLine = line.split(",");
+               if( spLine.length == 2 )
+                   datas.add(new Data(spLine[0], Double.parseDouble(spLine[1])));
+               else
+                   datas.add(new Data(String.valueOf(count), Double.parseDouble(spLine[0])));
             }
             br.close();
-	    } catch (Exception e) {
-	            System.err.println("[ERROR] : Exception while reading file => "+ANNOTATION_S_FILE);
-	            e.printStackTrace();
-	            System.exit(-1);
-	    }
-        
-        // read features
-		System.out.print("\r[INFO] Reading features ...");
-        try {
-                br = new BufferedReader(new FileReader(ANNOTATION_M_FILE));
-                String line = null;
-                int flag = 0;
-                int cnt = 0;
-                while( (line = br.readLine()) != null ){
-                        String[] sp = line.split(",");
-                        datas.get(cnt).setValue(Double.parseDouble(sp[conceptNo]));
-                        if( Double.parseDouble(sp[conceptNo]) != 0 )
-                                ++flag;
-                        ++cnt;
-                }
-                br.close();
-                if( flag == 0 ){
-                        System.err.println("[ERROR] ALL value of data is ZERO!! Do you have the right concept number??");
-                        System.exit(-1);
-                }
-        } catch (Exception e) {
-                System.err.println("[ERROR] Exception while reading file => "+ANNOTATION_M_FILE);
-                e.printStackTrace();
-                System.exit(-1);
+        }catch( Exception e){
+            System.err.println("[ERROR] IO or Data format error at "+unlabelDataFile);
+            e.printStackTrace();
+            System.exit(-1);
         }
-        
-        // create HashMap
-        HashMap<String, Double> dataMap = new HashMap<String, Double>();
-        for(int l=0; l<datas.size(); l++)
-        	dataMap.put(datas.get(l).getId(), datas.get(l).getValue());
-        
-        // read positive annotation data
-        System.out.print("\r[INFO] Reading positive annotation datas ...");
-        try {
-            br = new BufferedReader(new FileReader(INPUT_PATH_OF_POSITIVE+concepts.get(conceptNo)+".txt"));
+
+        // read minority class data
+        System.out.println("[INFO] Reading minority class data.");
+        try{
+            br = new BufferedReader(new FileReader(minorityDataFile));
             String line = null;
-            br.readLine();
-            while( (line = br.readLine()) != null ){
-                    String[] sp = line.split("\\.");
-                    if( sp.length == 1 )
-                            sp = line.split(" ");
-                    String name = "BG_"+sp[0]+"-"+sp[1]+"-2";
-                    if( dataMap.containsKey(name) ){
-                    		positives.add(new Double(dataMap.remove(name)));	
-                    }
+            while( (line=br.readLine()) != null ){
+                String[] spLine = line.split(",");
+                positives.add(Double.parseDouble(spLine[spLine.length-1]));
             }
-            br.close();
-	    } catch (Exception e) {
-	            System.err.println("[ERROR] Exception while reading file => "+INPUT_PATH_OF_POSITIVE+concepts.get(conceptNo)+".txt");
-	            e.printStackTrace();
-	            System.exit(-1);
-	    }
-        
-        // read negative annotation data
-        System.out.print("\r[INFO] Reading negative annotation datas ...");
-        try {
-                br = new BufferedReader(new FileReader(INPUT_PATH_OF_NEGATIVE+concepts.get(conceptNo)+".txt"));
-                String line = null;
-                br.readLine();
-                while( (line = br.readLine()) != null ){
-                        String[] sp = line.split("\\.");
-                        if( sp.length == 1 )
-                                sp = line.split(" ");
-                        String name = "BG_"+sp[0]+"-"+sp[1]+"-2";
-                        if( dataMap.containsKey(name) )
-                        	dataMap.remove(name);
-                }
-                br.close();
-        } catch (Exception e) {
-                System.err.println("[ERROR] Exception while reading file => "+INPUT_PATH_OF_NEGATIVE+concepts.get(conceptNo)+".txt");
-                e.printStackTrace();
-                System.exit(-1);
+        }catch( Exception e){
+            System.err.println("[ERROR] IO or Data format error at "+minorityDataFile);
+            e.printStackTrace();
+            System.exit(-1);
         }
-        
-        // remove same value instance
-        HashMap<Double, String> tmpMap = new HashMap<Double, String>();
-        for (Iterator<Entry<String, Double>> it = dataMap.entrySet().iterator(); it.hasNext();) {
-			Entry<String, Double> entry = it.next();
-			tmpMap.put(entry.getValue(), entry.getKey());
-        }
-        dataMap = null;
- 
-        // reInitialize datas array ( unlabeled instance )
-        datas = new ArrayList<Data>();
-        int cnt = 0;
-        for (Iterator<Entry<Double, String>> it = tmpMap.entrySet().iterator(); it.hasNext();) {
-			Entry<Double, String> entry = it.next();
-			datas.add(new Data(entry.getValue(), entry.getKey()));
-			++cnt;
-			// for calc cost
-			if( cnt >= MAX_USE_INSTANCE_NUM )
-				break;
-        }
-        
-        // output to stdout
-        System.out.println("\n--------------------------------");
-        System.out.println("- CONCEPT NUMBER     : "+this.conceptNo);
-        System.out.println("- CONCEPT NAME       : "+concepts.get(conceptNo));
-        System.out.println("- length of datas    : "+datas.size());
-        System.out.println("- length of postives : "+positives.size());
+
+	    // output to stdout
+        System.out.println("--------------------------------");
+        System.out.println("- size of data       : "+datas.size());
+        System.out.println("- size of postive    : "+positives.size());
+        System.out.println("- k of k-NN          : "+USE_NUM_OF_CALC_DIST);
+        System.out.println("- limit instance num : "+MAX_USE_INSTANCE_NUM);
+        System.out.println("- sampling num       : "+SAMPLING_NUM);
         System.out.println("--------------------------------");
 		 
-        // free temporal variables
-        concepts = null;
-        tmpMap = null;
-		
 	}
 	
 	/*
@@ -229,7 +124,7 @@ public class USIP {
 	 * 各未ラベル事例について、k-NNを用いてUSE_NUM_OF_CALC_DIST近傍との合計距離を求めます。
 	 */
 	private void calcDist(){
-		System.out.println("[INFO] Calculating distance between datas and positives");
+		System.out.println("[INFO] Calculating distance between data and positive.");
 		for(int i=0; i<datas.size(); i++ ){
 			System.out.print("\r# processing "+(i+1)+" of "+datas.size()+" datas...");
 			ArrayList<Double> tmp_diffs = new ArrayList<Double>();
@@ -275,8 +170,8 @@ public class USIP {
 	 */
 	private void reCalcScore(double smpVal){
 		for(int i=0; i<datas.size(); i++){
-			//datas.get(i).addSumSmpDist(Math.abs(smpVal-datas.get(i).getValue())); // 累計距離
-			datas.get(i).setSumSmpDist( ( datas.get(i).getSumSmpDist()*sampled.size()+Math.abs(smpVal-datas.get(i).getValue()) )/(sampled.size()+1) ); //平均距離
+			datas.get(i).addSumSmpDist(Math.abs(smpVal-datas.get(i).getValue())); // 累計距離
+			//datas.get(i).setSumSmpDist( ( datas.get(i).getSumSmpDist()*sampled.size()+Math.abs(smpVal-datas.get(i).getValue()) )/(sampled.size()+1) ); //平均距離
 		}
 	}
 	
@@ -290,13 +185,13 @@ public class USIP {
 	private void output(){
         BufferedWriter bw_m, bw_s, bw_a;
         try{
-                bw_m = new BufferedWriter(new FileWriter(OUTPUT_PATH+this.conceptNo+".feat"));
-                bw_s = new BufferedWriter(new FileWriter(OUTPUT_PATH+this.conceptNo+".shot"));
-				bw_a = new BufferedWriter(new FileWriter(OUTPUT_PATH+this.conceptNo+".4ann"));
+                bw_m = new BufferedWriter(new FileWriter(unlabelDataFile+".val"));
+                bw_s = new BufferedWriter(new FileWriter(unlabelDataFile+".ids"));
+				bw_a = new BufferedWriter(new FileWriter(unlabelDataFile+".smp"));
                 for(int i=0; i<sampled.size(); i++ ){                 
                         bw_m.write(sampled.get(i).getValue()+"\n");
                         bw_s.write(sampled.get(i).getId()+"\n");
-                        bw_a.write(sampled.get(i).getId()+" "+sampled.get(i).getValue()+" "+"-1\n");
+                        bw_a.write(sampled.get(i).getId()+","+sampled.get(i).getValue()+"\n");
                 }
                 bw_m.close();
                 bw_s.close();
@@ -306,7 +201,7 @@ public class USIP {
                 e.printStackTrace();
                 System.exit(-1);
         }
-        System.out.println("\n[FINISH] Results output into OUTPUT_DIR ===");
+        System.out.println("\n[FINISH] Results output to "+unlabelDataFile+".* ===");
 	}
 	
 	/*
@@ -316,22 +211,13 @@ public class USIP {
 	 */
 	public static void main(String[] args){
 		
-        if( args.length == 0 ){
-            System.out.println("[USAGE] java USIP <ConceptNumbers...>");
+        if( args.length != 2 ){
+            System.out.println("[USAGE] java USIP <UNLABELED_DATA_FILE> <MINORITY_CLASS_DATA_FILE>");
             System.exit(-1);
         }
         
-        int i = 0;
-        try{
-        	for( i=0; i<args.length; i++ ){
-				USIP ins = new USIP(Integer.parseInt(args[i]));
-				ins.run();
-				ins = null;
-        	}
-        }catch(NumberFormatException e){
-        	 System.err.println("[ERROR] Invalid parameter => "+args[i]);
-             System.exit(-1);
-        }
+		USIP ins = new USIP(args[0], args[1]);
+		ins.run();
         
 	}
 	
