@@ -9,8 +9,8 @@ k-NNにより密な分布を維持しつつ、サンプリングされた事例�
 使用方法  
 コンパイル  
 javac USIP.java  
-実行
-java USIP <unlabeled_data_file> <minority_class_data_file>  
+実行  
+java USIP \<unlabeled_data_file\> \<minority_class_data_file\>  
   
 ファイルフォーマット  
 [フォーマット1] 1次元の数値データ(1行に1データ)  
