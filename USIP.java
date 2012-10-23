@@ -171,7 +171,7 @@ public class USIP {
 	private void reCalcScore(double smpVal){
 		for(int i=0; i<datas.size(); i++){
 			datas.get(i).addSumSmpDist(Math.abs(smpVal-datas.get(i).getValue())); // 累計距離
-			//datas.get(i).setSumSmpDist( ( datas.get(i).getSumSmpDist()*sampled.size()+Math.abs(smpVal-datas.get(i).getValue()) )/(sampled.size()+1) ); //平均距離
+			//datas.get(i).setSumSmpDist( ( datas.get(i).getSumSmpDist()*(sampled.size()-1)+Math.abs(smpVal-datas.get(i).getValue()) )/sampled.size() ); //平均距離
 		}
 	}
 	
