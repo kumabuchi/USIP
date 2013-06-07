@@ -1,16 +1,16 @@
-USIP
+kNNSID
 ====
 
-Unlabeled data Sampling for Imbalanced Problem  
+k-NN based Selective sampling method for Imbalanced Data  
 
 2クラスラベル付きのImbalanceなデータセットから、その分布を考慮して未ラベル事例をサンプリングするプログラム。  
 k-NNにより密な分布を維持しつつ、サンプリングされた事例との距離を評価して全域のサンプルを抽出する。  
   
 ####使用方法  
 コンパイル  
-javac USIP.java  
+javac kNNSID.java  
 実行  
-java USIP \<unlabeled_data_file\> \<minority_class_data_file\>  
+java kNNSID \<unlabeled_data_file\> \<minority_class_data_file\>  
   
 ####ファイルフォーマット  
 [フォーマット1] 1次元の数値データ(1行に1データ)  
@@ -18,8 +18,8 @@ java USIP \<unlabeled_data_file\> \<minority_class_data_file\>
 詳しくはサンプルデータを参照。  
   
 ####アルゴリズム  
-　USIPは、各未ラベル事例について評価関数で得られる評価値に基づいて、最も評価値が高い事例から順にサンプリングしていきます。Imbalanced Problemを含むデータセットでは、多くの場合サンプリング結果のほとんどが多数派クラスの事例となってしまいますが、分布をできるだけそのままに、少数派クラスからも事例をサンプリングするアルゴリズムです。  
-　USIPは事例を1つサンプリングするごとに各事例の評価値を再計算します。サンプリング済み事例との距離を評価値に反映させることで、多数派クラスの特定の分布のみからサンプリングされ続けることを避けます。評価値(score)を決める評価関数は以下の式で定義されます。  
+　kNNSIDは、各未ラベル事例について評価関数で得られる評価値に基づいて、最も評価値が高い事例から順にサンプリングしていきます。Imbalanced Problemを含むデータセットでは、多くの場合サンプリング結果のほとんどが多数派クラスの事例となってしまいますが、分布をできるだけそのままに、少数派クラスからも事例をサンプリングするアルゴリズムです。  
+　kNNSIDは事例を1つサンプリングするごとに各事例の評価値を再計算します。サンプリング済み事例との距離を評価値に反映させることで、多数派クラスの特定の分布のみからサンプリングされ続けることを避けます。評価値(score)を決める評価関数は以下の式で定義されます。  
   
 *score= - avgDistKnn + avg(or sum)Dist*
 
